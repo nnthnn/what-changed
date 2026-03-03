@@ -1,0 +1,140 @@
+{
+  "name": "what-changed",
+  "displayName": "What Changed",
+  "description": "View current branch, base branch, and all files changed in this branch with quick open and diff",
+  "version": "0.1.0",
+  "publisher": "what-changed",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other",
+    "Source Control"
+  ],
+  "activationEvents": [
+    "onView:whatChangedFiles"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "What Changed",
+      "properties": {
+        "whatChanged.mainBranch": {
+          "type": "string",
+          "default": "main",
+          "description": "The main/base branch to compare against (e.g. main, develop, master)"
+        },
+        "whatChanged.viewMode": {
+          "type": "string",
+          "enum": ["flat", "tree"],
+          "default": "flat",
+          "description": "Show changed files as a flat list or a collapsible folder tree"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "what-changed",
+          "title": "What Changed",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "what-changed": [
+        {
+          "id": "whatChangedFiles",
+          "name": "What Changed"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "whatChanged.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "whatChanged.collapseOrExpandAll",
+        "title": "Collapse/Expand All",
+        "icon": "$(collapse-all)"
+      },
+      {
+        "command": "whatChanged.openFile",
+        "title": "Open File"
+      },
+      {
+        "command": "whatChanged.diffWithMain",
+        "title": "Compare with Base Branch (Diff)",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "whatChanged.toggleViewMode",
+        "title": "Toggle View: Flat / Tree"
+      },
+      {
+        "command": "whatChanged.setComparisonBranch",
+        "title": "Change comparison branch..."
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "whatChanged.refresh",
+          "when": "view == whatChangedFiles",
+          "group": "navigation"
+        },
+        {
+          "command": "whatChanged.collapseOrExpandAll",
+          "when": "view == whatChangedFiles",
+          "group": "navigation@1"
+        },
+        {
+          "command": "whatChanged.toggleViewMode",
+          "when": "view == whatChangedFiles",
+          "group": "1_toggle"
+        },
+        {
+          "command": "whatChanged.setComparisonBranch",
+          "when": "view == whatChangedFiles",
+          "group": "1_toggle"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "whatChanged.diffWithMain",
+          "when": "view == whatChangedFiles && viewItem == changedFile",
+          "group": "inline"
+        },
+        {
+          "command": "whatChanged.openFile",
+          "when": "view == whatChangedFiles && viewItem == changedFile",
+          "group": "1_open"
+        }
+      ],
+      "keybindings": [
+        {
+          "command": "whatChanged.diffWithMain",
+          "key": "ctrl+enter",
+          "mac": "cmd+enter",
+          "when": "view == whatChangedFiles && viewItem == changedFile"
+        }
+      ]
+    }
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "vscode:prepublish": "pnpm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "pnpm run compile && vsce package --no-dependencies --allow-missing-repository",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.7.1",
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.3.0"
+  }
+}
