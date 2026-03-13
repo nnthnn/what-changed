@@ -1,5 +1,30 @@
+# Build & deps
 out/
 node_modules/
 .pnpm-store/
+biome.json.backup
 *.vsix
 package-lock.json
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.idea/
+.vscode-test/
+.claude/
+.zed/
+
+# Env
+.env
+.env.*
+!.env.example
+
+.vscode/

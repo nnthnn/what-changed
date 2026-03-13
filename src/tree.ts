@@ -1,8 +1,11 @@
-import * as vscode from 'vscode';
-import * as path from 'path';
-import type { BranchInfo, ChangedFile } from './git';
+import * as path from "node:path";
+import * as vscode from "vscode";
+import type { BranchInfo, ChangedFile } from "./git";
 
-export type TreeElement = BranchInfoElement | FolderElement | ChangedFileElement;
+export type TreeElement =
+  | BranchInfoElement
+  | FolderElement
+  | ChangedFileElement;
 
 export class BranchInfoElement {
   constructor(public readonly info: BranchInfo) {}
@@ -19,14 +22,16 @@ export class FolderElement {
   ) {}
   /** Display label: root-level shows "fish / .config / fish"; nested shows last segment only (e.g. "functions"). */
   get label(): string {
-    if (this.isRootLevel && this.pathPrefix.includes('/')) {
-      return this.pathPrefix.split('/').join(' / ');
+    if (this.isRootLevel && this.pathPrefix.includes("/")) {
+      return this.pathPrefix.split("/").join(" / ");
     }
-    return this.pathPrefix.includes('/') ? this.pathPrefix.split('/').pop()! : this.pathPrefix;
+    return this.pathPrefix.includes("/")
+      ? (this.pathPrefix.split("/").pop() ?? this.pathPrefix)
+      : this.pathPrefix;
   }
   /** Whether any changed file is under this folder (or is this path). */
   hasChanges(): boolean {
-    const prefix = this.pathPrefix + '/';
+    const prefix = `${this.pathPrefix}/`;
     return this.info.changedFiles.some(
       (f) => f.path === this.pathPrefix || f.path.startsWith(prefix),
     );
@@ -42,29 +47,46 @@ export class ChangedFileElement {
 
 function kindLabel(kind: string): string {
   const labels: Record<string, string> = {
-    A: 'added',
-    M: 'modified',
-    D: 'deleted',
-    R: 'renamed',
-    C: 'copied',
-    U: 'unmerged',
-    '?': 'unknown',
+    A: "added",
+    M: "modified",
+    D: "deleted",
+    R: "renamed",
+    C: "copied",
+    U: "unmerged",
+    "?": "unknown",
   };
   return labels[kind] ?? kind;
 }
 
 function workingStatusLabel(s: string): string {
   const labels: Record<string, string> = {
-    staged: 'staged',
-    modified: 'modified',
-    untracked: 'untracked',
-    unchanged: '',
+    staged: "staged",
+    modified: "modified",
+    untracked: "untracked",
+    unchanged: "",
   };
-  return labels[s] ?? '';
+  return labels[s] ?? "";
 }
 
-function getViewMode(): 'flat' | 'tree' {
-  return vscode.workspace.getConfiguration('whatChanged').get<'flat' | 'tree'>('viewMode') ?? 'flat';
+function getViewMode(): "flat" | "tree" {
+  return (
+    vscode.workspace
+      .getConfiguration("whatChanged")
+      .get<"flat" | "tree">("viewMode") ?? "flat"
+  );
+}
+
+function getPathFilter(): string {
+  return (
+    vscode.workspace
+      .getConfiguration("whatChanged")
+      .get<string>("pathFilter") ?? ""
+  ).trim();
+}
+
+function filterByPath(files: ChangedFile[], pattern: string): ChangedFile[] {
+  if (!pattern) return files;
+  return files.filter((f) => f.path.includes(pattern));
 }
 
 /** Root-level and direct children under a path prefix. */
@@ -72,14 +94,15 @@ function getChildPaths(
   changedFiles: ChangedFile[],
   pathPrefix: string,
 ): { folders: string[]; files: ChangedFile[] } {
-  const prefix = pathPrefix ? pathPrefix + '/' : '';
+  const prefix = pathPrefix ? `${pathPrefix}/` : "";
   const folders = new Set<string>();
   const files: ChangedFile[] = [];
   for (const f of changedFiles) {
-    if (!f.path.startsWith(prefix) && (prefix !== '' || f.path.includes('/'))) continue;
+    if (!f.path.startsWith(prefix) && (prefix !== "" || f.path.includes("/")))
+      continue;
     const rest = prefix ? f.path.slice(prefix.length) : f.path;
-    if (rest.includes('/')) {
-      folders.add(rest.split('/')[0]!);
+    if (rest.includes("/")) {
+      folders.add(rest.split("/")[0] ?? rest);
     } else {
       files.push(f);
     }
@@ -100,7 +123,7 @@ function mergeSingleFolderChain(
   for (;;) {
     const { folders, files } = getChildPaths(changedFiles, full);
     if (files.length > 0 || folders.length !== 1) return full;
-    full = `${full}/${folders[0]!}`;
+    full = `${full}/${folders[0] ?? ""}`;
   }
 }
 
@@ -117,8 +140,12 @@ function getChildPathsMerged(
   return { folders: unique, files: raw.files };
 }
 
-export class WhatChangedProvider implements vscode.TreeDataProvider<TreeElement> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<TreeElement | undefined | null | void>();
+export class WhatChangedProvider
+  implements vscode.TreeDataProvider<TreeElement>
+{
+  private _onDidChangeTreeData = new vscode.EventEmitter<
+    TreeElement | undefined | null
+  >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private branchInfo: BranchInfo | null = null;
@@ -128,14 +155,23 @@ export class WhatChangedProvider implements vscode.TreeDataProvider<TreeElement>
   }
 
   async load(): Promise<void> {
-    const { getBranchInfo } = await import('./git');
+    const { getBranchInfo } = await import("./git");
     this.branchInfo = await getBranchInfo();
-    this._onDidChangeTreeData.fire();
+    this._onDidChangeTreeData.fire(undefined);
   }
 
   /** Root tree element (branch info row), or null if not loaded. Used for expand-all. */
   getRootElement(): BranchInfoElement | null {
     return this.branchInfo ? new BranchInfoElement(this.branchInfo) : null;
+  }
+
+  /** Paths of all changed files (for copy paths command). */
+  getChangedFilePaths(absolute: boolean): string[] {
+    if (!this.branchInfo) return [];
+    const { repoRoot, changedFiles } = this.branchInfo;
+    return changedFiles.map((f) =>
+      absolute ? path.join(repoRoot, f.path) : f.path,
+    );
   }
 
   getTreeItem(element: TreeElement): vscode.TreeItem {
@@ -144,12 +180,40 @@ export class WhatChangedProvider implements vscode.TreeDataProvider<TreeElement>
       const label = info.error
         ? `Error: ${info.error}`
         : `${info.currentBranch} ← ${info.mainBranch}`;
-      const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Expanded);
-      item.description = info.error ? undefined : `${info.changedFiles.length} file(s) changed`;
-      item.contextValue = 'branchInfo';
-      item.tooltip = info.error
-        ? info.error
-        : `Current branch: ${info.currentBranch}\nBase branch: ${info.mainBranch}\n${info.changedFiles.length} file(s) changed`;
+      const item = new vscode.TreeItem(
+        label,
+        vscode.TreeItemCollapsibleState.Expanded,
+      );
+      const pathFilter = getPathFilter();
+      const filteredCount = pathFilter
+        ? filterByPath(info.changedFiles, pathFilter).length
+        : info.changedFiles.length;
+      const fileCountStr =
+        pathFilter && filteredCount !== info.changedFiles.length
+          ? `${filteredCount} of ${info.changedFiles.length} file(s)`
+          : `${info.changedFiles.length} file(s) changed`;
+      const parts: string[] = [fileCountStr];
+      if (info.commitsAhead !== undefined && info.commitsAhead > 0)
+        parts.push(`${info.commitsAhead} ahead`);
+      if (info.commitsBehind !== undefined && info.commitsBehind > 0)
+        parts.push(`${info.commitsBehind} behind`);
+      if (info.stashCount !== undefined && info.stashCount > 0)
+        parts.push(`${info.stashCount} stash(es)`);
+      item.description = info.error ? undefined : parts.join(" · ");
+      item.contextValue = "branchInfo";
+      const tooltipParts = [
+        `Current branch: ${info.currentBranch}`,
+        `Base branch: ${info.mainBranch}`,
+        fileCountStr,
+      ];
+      if (pathFilter) tooltipParts.push(`Path filter: ${pathFilter}`);
+      if (info.commitsAhead !== undefined && info.commitsAhead > 0)
+        tooltipParts.push(`${info.commitsAhead} commit(s) ahead`);
+      if (info.commitsBehind !== undefined && info.commitsBehind > 0)
+        tooltipParts.push(`${info.commitsBehind} commit(s) behind`);
+      if (info.stashCount !== undefined && info.stashCount > 0)
+        tooltipParts.push(`${info.stashCount} stash(es)`);
+      item.tooltip = info.error ? info.error : tooltipParts.join("\n");
       return item;
     }
 
@@ -158,13 +222,15 @@ export class WhatChangedProvider implements vscode.TreeDataProvider<TreeElement>
         element.label,
         vscode.TreeItemCollapsibleState.Collapsed,
       );
-      item.contextValue = 'folder';
+      item.contextValue = "folder";
       if (element.hasChanges()) {
         item.iconPath = new vscode.ThemeIcon(
-          'folder',
-          new vscode.ThemeColor('gitDecoration.modifiedResourceForeground'),
+          "folder",
+          new vscode.ThemeColor("gitDecoration.modifiedResourceForeground"),
         );
-        item.resourceUri = vscode.Uri.file(path.join(element.info.repoRoot, element.pathPrefix));
+        item.resourceUri = vscode.Uri.file(
+          path.join(element.info.repoRoot, element.pathPrefix),
+        );
       } else {
         item.iconPath = vscode.ThemeIcon.Folder;
       }
@@ -177,22 +243,28 @@ export class WhatChangedProvider implements vscode.TreeDataProvider<TreeElement>
       const parts: string[] = [kindLabel(file.kind)];
       const ws = workingStatusLabel(file.workingStatus);
       if (ws) parts.push(ws);
-      const isTree = getViewMode() === 'tree';
-      const label = isTree && file.path.includes('/') ? file.path.split('/').pop()! : file.path;
-      const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
-      item.description = parts.join(' · ');
-      item.tooltip = `${file.path}\n${parts.join(' · ')}`;
+      const isTree = getViewMode() === "tree";
+      const label =
+        isTree && file.path.includes("/")
+          ? (file.path.split("/").pop() ?? file.path)
+          : file.path;
+      const item = new vscode.TreeItem(
+        label,
+        vscode.TreeItemCollapsibleState.None,
+      );
+      item.description = parts.join(" · ");
+      item.tooltip = `${file.path}\n${parts.join(" · ")}`;
       item.resourceUri = vscode.Uri.file(path.resolve(repoRoot, file.path));
-      item.contextValue = 'changedFile';
+      item.contextValue = "changedFile";
       item.command = {
-        command: 'whatChanged.openFile',
-        title: 'Open',
+        command: "whatChanged.openFile",
+        title: "Open",
         arguments: [element],
       };
       return item;
     }
 
-    return new vscode.TreeItem('', vscode.TreeItemCollapsibleState.None);
+    return new vscode.TreeItem("", vscode.TreeItemCollapsibleState.None);
   }
 
   getParent(element: TreeElement): TreeElement | undefined {
@@ -200,15 +272,15 @@ export class WhatChangedProvider implements vscode.TreeDataProvider<TreeElement>
     const info = this.branchInfo;
     if (element instanceof BranchInfoElement) return undefined;
     if (element instanceof FolderElement) {
-      const idx = element.pathPrefix.lastIndexOf('/');
+      const idx = element.pathPrefix.lastIndexOf("/");
       if (idx === -1) return new BranchInfoElement(info);
       return new FolderElement(element.pathPrefix.slice(0, idx), info);
     }
     if (element instanceof ChangedFileElement) {
-      if (getViewMode() === 'flat') return new BranchInfoElement(info);
-      const dir = element.file.path.includes('/')
-        ? element.file.path.split('/').slice(0, -1).join('/')
-        : '';
+      if (getViewMode() === "flat") return new BranchInfoElement(info);
+      const dir = element.file.path.includes("/")
+        ? element.file.path.split("/").slice(0, -1).join("/")
+        : "";
       if (!dir) return new BranchInfoElement(info);
       return new FolderElement(dir, info);
     }
@@ -224,27 +296,40 @@ export class WhatChangedProvider implements vscode.TreeDataProvider<TreeElement>
       return [];
     }
 
+    const pathFilter = getPathFilter();
+    const filteredFiles = filterByPath(info.changedFiles, pathFilter);
+
     if (!element) {
       return [new BranchInfoElement(info)];
     }
 
     if (element instanceof BranchInfoElement) {
-      if (getViewMode() === 'flat') {
-        return info.changedFiles.map((f) => new ChangedFileElement(f, info.repoRoot));
+      if (getViewMode() === "flat") {
+        return filteredFiles.map(
+          (f) => new ChangedFileElement(f, info.repoRoot),
+        );
       }
-      const { folders, files } = getChildPathsMerged(info.changedFiles, '');
-      const folderEls = folders.map((mergedPath) => new FolderElement(mergedPath, info, true));
-      const fileEls = files.map((f) => new ChangedFileElement(f, info.repoRoot));
+      const { folders, files } = getChildPathsMerged(filteredFiles, "");
+      const folderEls = folders.map(
+        (mergedPath) => new FolderElement(mergedPath, info, true),
+      );
+      const fileEls = files.map(
+        (f) => new ChangedFileElement(f, info.repoRoot),
+      );
       return [...folderEls, ...fileEls];
     }
 
     if (element instanceof FolderElement) {
       const { folders, files } = getChildPathsMerged(
-        element.info.changedFiles,
+        filteredFiles,
         element.pathPrefix,
       );
-      const folderEls = folders.map((mergedPath) => new FolderElement(mergedPath, element.info));
-      const fileEls = files.map((f) => new ChangedFileElement(f, element.info.repoRoot));
+      const folderEls = folders.map(
+        (mergedPath) => new FolderElement(mergedPath, element.info),
+      );
+      const fileEls = files.map(
+        (f) => new ChangedFileElement(f, element.info.repoRoot),
+      );
       return [...folderEls, ...fileEls];
     }
 

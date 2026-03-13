@@ -1,0 +1,17 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.0.0/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git" },
+  "files": {
+    "ignore": ["out", "node_modules", "*.vsix", "pnpm-lock.yaml"]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2 },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "correctness": { "noUnusedVariables": "warn" },
+      "style": { "useConst": "warn" }
+    }
+  },
+  "organizeImports": { "enabled": true }
+}

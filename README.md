@@ -15,6 +15,8 @@ A VS Code extension that shows what branch you're on, which base branch you're c
 
 - **`whatChanged.mainBranch`** – The base branch to compare against (e.g. `main`, `develop`, `master`). Default: `main`.
 - **`whatChanged.viewMode`** – How to show changed files: `flat` (single list) or `tree` (collapsible folders). Default: `flat`. You can also toggle this with the button in the view title.
+- **`whatChanged.pathFilter`** – Only show files whose path contains this text. Leave empty to show all.
+- **`whatChanged.copyPathsFormat`** – When copying changed file paths: `relative`, `absolute`, or `prompt` (ask each time). Default: `prompt`.
 
 ## Usage
 
@@ -26,11 +28,11 @@ A VS Code extension that shows what branch you're on, which base branch you're c
 
 ## Ideas for future improvements
 
-**Quick wins**
-- **Commit count** – Show "X commits ahead" (and optionally "Y behind") next to the branch row.
-- **Copy paths** – Command (e.g. from `...` menu) to copy changed file paths (relative or absolute) for PRs or scripts.
-- **Focus view keybinding** – Optional keybinding to focus the What Changed view from anywhere.
-- **Stash hint** – Small indicator when there are stashes so you don’t forget them.
+**Quick wins** *(implemented)*
+- **Commit count** – Branch row shows "X ahead" and "Y behind" when relevant.
+- **Copy paths** – Use **...** → **Copy changed file paths...** to copy relative or absolute paths.
+- **Focus view** – **Alt+Shift+W** (Option+Shift+W on Mac) focuses the view; customize in Keyboard Shortcuts.
+- **Stash hint** – When you have stashes, the branch row shows "N stash(es)".
 
 **Filtering & display**
 - **Filter by path** – Text box or setting to only show paths matching a pattern (e.g. `src/`, `*.ts`).
@@ -87,6 +89,16 @@ cursor --install-extension /path/to/what-changed/what-changed-0.1.0.vsix
 ```
 
 If `pnpm run package` fails (e.g. due to a vsce secret-scan bug), use **Option A** (F5) to run from source.
+
+## Before committing
+
+Run the checklist so the tree compiles and passes lint:
+
+```bash
+pnpm run check
+```
+
+This runs `compile` then `lint` (Biome). Use `pnpm run format` to format code with Biome. Optionally run the extension (F5) and click through the view to confirm nothing is broken.
 
 ## Requirements
 
