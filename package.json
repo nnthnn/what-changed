@@ -30,6 +30,12 @@
           "default": "",
           "description": "Only show files whose path contains this text (e.g. src/, *.ts). Leave empty to show all."
         },
+        "whatChanged.statusFilter": {
+          "type": "string",
+          "enum": ["all", "modified", "staged", "untracked"],
+          "default": "all",
+          "description": "Only show files with this working tree status. 'all' shows every changed file."
+        },
         "whatChanged.copyPathsFormat": {
           "type": "string",
           "enum": ["relative", "absolute", "prompt"],
@@ -94,6 +100,10 @@
       {
         "command": "whatChanged.setPathFilter",
         "title": "Filter by path..."
+      },
+      {
+        "command": "whatChanged.setStatusFilter",
+        "title": "Filter by status..."
       }
     ],
     "menus": {
@@ -127,6 +137,11 @@
           "command": "whatChanged.setPathFilter",
           "when": "view == whatChangedFiles",
           "group": "1_toggle"
+        },
+        {
+          "command": "whatChanged.setStatusFilter",
+          "when": "view == whatChangedFiles",
+          "group": "1_toggle"
         }
       ],
       "view/item/context": [
@@ -140,21 +155,21 @@
           "when": "view == whatChangedFiles && viewItem == changedFile",
           "group": "1_open"
         }
-      ],
-      "keybindings": [
-        {
-          "command": "whatChanged.diffWithMain",
-          "key": "ctrl+enter",
-          "mac": "cmd+enter",
-          "when": "view == whatChangedFiles && viewItem == changedFile"
-        },
-        {
-          "command": "whatChanged.focusView",
-          "key": "alt+shift+w",
-          "mac": "alt+shift+w"
-        }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "whatChanged.diffWithMain",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "view == whatChangedFiles && viewItem == changedFile"
+      },
+      {
+        "command": "workbench.view.extension.what-changed",
+        "key": "alt+shift+w",
+        "mac": "alt+shift+w"
+      }
+    ]
   },
   "packageManager": "pnpm@9.15.0",
   "scripts": {

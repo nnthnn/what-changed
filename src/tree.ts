@@ -5,7 +5,8 @@ import type { BranchInfo, ChangedFile } from "./git";
 export type TreeElement =
   | BranchInfoElement
   | FolderElement
-  | ChangedFileElement;
+  | ChangedFileElement
+  | EmptyStateElement;
 
 export class BranchInfoElement {
   constructor(public readonly info: BranchInfo) {}
@@ -43,6 +44,11 @@ export class ChangedFileElement {
     public readonly file: ChangedFile,
     public readonly repoRoot: string,
   ) {}
+}
+
+/** Shown when there are no changed files (after path/status filter). Click to change comparison branch. */
+export class EmptyStateElement {
+  constructor(public readonly info: BranchInfo) {}
 }
 
 function kindLabel(kind: string): string {
@@ -84,9 +90,27 @@ function getPathFilter(): string {
   ).trim();
 }
 
+export type StatusFilter = "all" | "modified" | "staged" | "untracked";
+
+function getStatusFilter(): StatusFilter {
+  return (
+    vscode.workspace
+      .getConfiguration("whatChanged")
+      .get<StatusFilter>("statusFilter") ?? "all"
+  );
+}
+
 function filterByPath(files: ChangedFile[], pattern: string): ChangedFile[] {
   if (!pattern) return files;
   return files.filter((f) => f.path.includes(pattern));
+}
+
+function filterByStatus(
+  files: ChangedFile[],
+  status: StatusFilter,
+): ChangedFile[] {
+  if (status === "all") return files;
+  return files.filter((f) => f.workingStatus === status);
 }
 
 /** Root-level and direct children under a path prefix. */
@@ -150,8 +174,9 @@ export class WhatChangedProvider
 
   private branchInfo: BranchInfo | null = null;
 
+  /** Re-reads config and notifies the tree to re-render (no git fetch). */
   refresh(): void {
-    void this.load();
+    this._onDidChangeTreeData.fire(undefined);
   }
 
   async load(): Promise<void> {
@@ -165,16 +190,43 @@ export class WhatChangedProvider
     return this.branchInfo ? new BranchInfoElement(this.branchInfo) : null;
   }
 
-  /** Paths of all changed files (for copy paths command). */
+  /** Paths of changed files (for copy paths command). Respects path and status filter. */
   getChangedFilePaths(absolute: boolean): string[] {
     if (!this.branchInfo) return [];
     const { repoRoot, changedFiles } = this.branchInfo;
-    return changedFiles.map((f) =>
+    let filtered = filterByPath(changedFiles, getPathFilter());
+    filtered = filterByStatus(filtered, getStatusFilter());
+    return filtered.map((f) =>
       absolute ? path.join(repoRoot, f.path) : f.path,
     );
   }
 
+  /** Count of files currently shown (after path and status filter). Used for badge. */
+  getDisplayedFileCount(): number {
+    if (!this.branchInfo) return 0;
+    let filtered = filterByPath(this.branchInfo.changedFiles, getPathFilter());
+    filtered = filterByStatus(filtered, getStatusFilter());
+    return filtered.length;
+  }
+
   getTreeItem(element: TreeElement): vscode.TreeItem {
+    if (element instanceof EmptyStateElement) {
+      const item = new vscode.TreeItem(
+        "No changes",
+        vscode.TreeItemCollapsibleState.None,
+      );
+      item.description = "Change comparison branch...";
+      item.command = {
+        command: "whatChanged.setComparisonBranch",
+        title: "Change comparison branch...",
+      };
+      item.contextValue = "emptyState";
+      item.iconPath = new vscode.ThemeIcon("info");
+      item.tooltip =
+        "No files differ from the base branch. Click to compare against a different branch.";
+      return item;
+    }
+
     if (element instanceof BranchInfoElement) {
       const info = element.info;
       const label = info.error
@@ -185,13 +237,15 @@ export class WhatChangedProvider
         vscode.TreeItemCollapsibleState.Expanded,
       );
       const pathFilter = getPathFilter();
-      const filteredCount = pathFilter
-        ? filterByPath(info.changedFiles, pathFilter).length
-        : info.changedFiles.length;
+      const statusFilter = getStatusFilter();
+      let filtered = filterByPath(info.changedFiles, pathFilter);
+      filtered = filterByStatus(filtered, statusFilter);
+      const filteredCount = filtered.length;
+      const totalCount = info.changedFiles.length;
       const fileCountStr =
-        pathFilter && filteredCount !== info.changedFiles.length
-          ? `${filteredCount} of ${info.changedFiles.length} file(s)`
-          : `${info.changedFiles.length} file(s) changed`;
+        filteredCount !== totalCount
+          ? `${filteredCount} of ${totalCount} file(s)`
+          : `${totalCount} file(s) changed`;
       const parts: string[] = [fileCountStr];
       if (info.commitsAhead !== undefined && info.commitsAhead > 0)
         parts.push(`${info.commitsAhead} ahead`);
@@ -207,6 +261,8 @@ export class WhatChangedProvider
         fileCountStr,
       ];
       if (pathFilter) tooltipParts.push(`Path filter: ${pathFilter}`);
+      if (statusFilter !== "all")
+        tooltipParts.push(`Status filter: ${statusFilter}`);
       if (info.commitsAhead !== undefined && info.commitsAhead > 0)
         tooltipParts.push(`${info.commitsAhead} commit(s) ahead`);
       if (info.commitsBehind !== undefined && info.commitsBehind > 0)
@@ -271,6 +327,8 @@ export class WhatChangedProvider
     if (!this.branchInfo) return undefined;
     const info = this.branchInfo;
     if (element instanceof BranchInfoElement) return undefined;
+    if (element instanceof EmptyStateElement)
+      return new BranchInfoElement(info);
     if (element instanceof FolderElement) {
       const idx = element.pathPrefix.lastIndexOf("/");
       if (idx === -1) return new BranchInfoElement(info);
@@ -297,13 +355,18 @@ export class WhatChangedProvider
     }
 
     const pathFilter = getPathFilter();
-    const filteredFiles = filterByPath(info.changedFiles, pathFilter);
+    const statusFilter = getStatusFilter();
+    let filteredFiles = filterByPath(info.changedFiles, pathFilter);
+    filteredFiles = filterByStatus(filteredFiles, statusFilter);
 
     if (!element) {
       return [new BranchInfoElement(info)];
     }
 
     if (element instanceof BranchInfoElement) {
+      if (filteredFiles.length === 0) {
+        return [new EmptyStateElement(info)];
+      }
       if (getViewMode() === "flat") {
         return filteredFiles.map(
           (f) => new ChangedFileElement(f, info.repoRoot),

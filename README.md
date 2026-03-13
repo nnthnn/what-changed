@@ -16,11 +16,12 @@ A VS Code extension that shows what branch you're on, which base branch you're c
 - **`whatChanged.mainBranch`** – The base branch to compare against (e.g. `main`, `develop`, `master`). Default: `main`.
 - **`whatChanged.viewMode`** – How to show changed files: `flat` (single list) or `tree` (collapsible folders). Default: `flat`. You can also toggle this with the button in the view title.
 - **`whatChanged.pathFilter`** – Only show files whose path contains this text. Leave empty to show all.
+- **`whatChanged.statusFilter`** – Only show files with this working tree status: `all`, `modified`, `staged`, or `untracked`. Default: `all`.
 - **`whatChanged.copyPathsFormat`** – When copying changed file paths: `relative`, `absolute`, or `prompt` (ask each time). Default: `prompt`.
 
 ## Usage
 
-1. Open the **What Changed** view from the Activity Bar (branch/diff icon).
+1. Open the **What Changed** view from the Activity Bar (branch/diff icon), or press **Alt+Shift+W** (Option+Shift+W on Mac) to focus it.
 2. The view shows: `your-branch ← main` and the list of changed files.
 3. Click a file to open it, or use the diff icon to compare with the base branch.
 4. Use the refresh icon in the view title to reload.
@@ -35,8 +36,8 @@ A VS Code extension that shows what branch you're on, which base branch you're c
 - **Stash hint** – When you have stashes, the branch row shows "N stash(es)".
 
 **Filtering & display**
-- **Filter by path** – Text box or setting to only show paths matching a pattern (e.g. `src/`, `*.ts`).
-- **Filter by status** – Toggle to show only modified, only staged, or only untracked.
+- **Filter by path** – Text box or setting to only show paths matching a pattern (e.g. `src/`, `*.ts`). *(implemented)*
+- **Filter by status** – Toggle to show only modified, only staged, or only untracked. *(implemented)*
 - **Sort options** – Sort by path, status, or “recently changed” (if we can get mtime).
 
 **Diff & compare**
@@ -51,8 +52,8 @@ A VS Code extension that shows what branch you're on, which base branch you're c
 - **Reveal in Explorer** – Context menu to show the file in the file explorer.
 
 **Polish**
-- **Badge on activity bar icon** – Show the number of changed files on the What Changed icon.
-- **Empty state** – Friendly message and “Change comparison branch” when there are no changes.
+- **Badge on activity bar icon** – Show the number of changed files on the What Changed icon. *(implemented)*
+- **Empty state** – Friendly message and “Change comparison branch” when there are no changes. *(implemented)*
 - **Multi-root workspace** – Support multiple repo roots (one What Changed section per folder or a single merged list).
 
 ## Development

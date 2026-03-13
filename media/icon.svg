@@ -1,7 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <circle cx="18" cy="18" r="3"/>
-  <circle cx="6" cy="6" r="3"/>
-  <path d="M6 9v6"/>
-  <path d="M18 15V9"/>
-  <path d="M8 10l4 4 4-4"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Left panel (before) -->
+  <rect x="2" y="4" width="7" height="16" rx="1.5" />
+  <line x1="4" y1="7" x2="6" y2="7" />
+  <line x1="4" y1="10" x2="7" y2="10" />
+  <line x1="4" y1="13" x2="5.5" y2="13" />
+  <!-- Right panel (after) -->
+  <rect x="15" y="4" width="7" height="16" rx="1.5" />
+  <line x1="17" y1="7" x2="20" y2="7" />
+  <line x1="17" y1="10" x2="21" y2="10" />
+  <line x1="17" y1="13" x2="19" y2="13" />
+  <!-- Arrow between panels -->
+  <path d="M9 12h2M12 10l2 2-2 2" />
 </svg>

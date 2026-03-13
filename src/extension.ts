@@ -5,6 +5,18 @@ import { type ChangedFileElement, WhatChangedProvider } from "./tree";
 
 let treeFullyExpanded = true;
 
+function updateBadge(
+  provider: import("./tree").WhatChangedProvider,
+  treeView: vscode.TreeView<import("./tree").TreeElement>,
+): void {
+  const count = provider.getDisplayedFileCount();
+  if (count > 0) {
+    treeView.badge = { value: count, tooltip: `${count} changed file(s)` };
+  } else {
+    treeView.badge = undefined;
+  }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   const provider = new WhatChangedProvider();
 
@@ -18,6 +30,7 @@ export function activate(context: vscode.ExtensionContext): void {
     registerGitDocumentProvider(),
     vscode.commands.registerCommand("whatChanged.refresh", async () => {
       await provider.load();
+      updateBadge(provider, treeView);
     }),
     vscode.commands.registerCommand(
       "whatChanged.collapseOrExpandAll",
@@ -103,6 +116,35 @@ export function activate(context: vscode.ExtensionContext): void {
           vscode.ConfigurationTarget.Workspace,
         );
         provider.refresh();
+        updateBadge(provider, treeView);
+      }
+    }),
+    vscode.commands.registerCommand("whatChanged.setStatusFilter", async () => {
+      const config = vscode.workspace.getConfiguration("whatChanged");
+      const current =
+        config.get<"all" | "modified" | "staged" | "untracked">(
+          "statusFilter",
+        ) ?? "all";
+      const choice = await vscode.window.showQuickPick(
+        [
+          { label: "All", value: "all" as const },
+          { label: "Modified", value: "modified" as const },
+          { label: "Staged", value: "staged" as const },
+          { label: "Untracked", value: "untracked" as const },
+        ],
+        {
+          title: "Filter by status",
+          placeHolder: current === "all" ? "All" : current,
+        },
+      );
+      if (choice !== undefined) {
+        await config.update(
+          "statusFilter",
+          choice.value,
+          vscode.ConfigurationTarget.Workspace,
+        );
+        provider.refresh();
+        updateBadge(provider, treeView);
       }
     }),
     vscode.commands.registerCommand(
@@ -123,6 +165,7 @@ export function activate(context: vscode.ExtensionContext): void {
             vscode.ConfigurationTarget.Global,
           );
           await provider.load();
+          updateBadge(provider, treeView);
         }
       },
     ),
@@ -172,10 +215,18 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
   );
 
-  provider.load();
+  void provider.load().then(() => {
+    updateBadge(provider, treeView);
+  });
 
   vscode.workspace.onDidChangeConfiguration((e) => {
-    if (e.affectsConfiguration("whatChanged.pathFilter")) provider.refresh();
+    if (
+      e.affectsConfiguration("whatChanged.pathFilter") ||
+      e.affectsConfiguration("whatChanged.statusFilter")
+    ) {
+      provider.refresh();
+      updateBadge(provider, treeView);
+    }
   });
 }
 
