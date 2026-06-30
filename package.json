@@ -2,13 +2,18 @@
   "name": "what-changed",
   "displayName": "What Changed",
   "description": "View current branch, base branch, and all files changed in this branch with quick open and diff",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "what-changed",
   "engines": {
     "vscode": "^1.74.0"
   },
-  "categories": ["Other", "Source Control"],
-  "activationEvents": ["onView:whatChangedFiles"],
+  "categories": [
+    "Other",
+    "Source Control"
+  ],
+  "activationEvents": [
+    "onView:whatChangedFiles"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
@@ -21,7 +26,10 @@
         },
         "whatChanged.viewMode": {
           "type": "string",
-          "enum": ["flat", "tree"],
+          "enum": [
+            "flat",
+            "tree"
+          ],
           "default": "flat",
           "description": "Show changed files as a flat list or a collapsible folder tree"
         },
@@ -32,13 +40,22 @@
         },
         "whatChanged.statusFilter": {
           "type": "string",
-          "enum": ["all", "modified", "staged", "untracked"],
+          "enum": [
+            "all",
+            "modified",
+            "staged",
+            "untracked"
+          ],
           "default": "all",
           "description": "Only show files with this working tree status. 'all' shows every changed file."
         },
         "whatChanged.copyPathsFormat": {
           "type": "string",
-          "enum": ["relative", "absolute", "prompt"],
+          "enum": [
+            "relative",
+            "absolute",
+            "prompt"
+          ],
           "default": "prompt",
           "description": "Default format when copying changed file paths: relative, absolute, or prompt each time."
         }
