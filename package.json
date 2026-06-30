@@ -2,7 +2,7 @@
   "name": "what-changed",
   "displayName": "What Changed",
   "description": "View current branch, base branch, and all files changed in this branch with quick open and diff",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "what-changed",
   "engines": {
     "vscode": "^1.74.0"
