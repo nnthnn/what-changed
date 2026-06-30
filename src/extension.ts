@@ -219,6 +219,32 @@ export function activate(context: vscode.ExtensionContext): void {
     updateBadge(provider, treeView);
   });
 
+  // Refresh when workspace files change (debounced)
+  let refreshTimeout: ReturnType<typeof setTimeout> | undefined;
+  const debounceMs = 800;
+  const scheduleRefresh = (): void => {
+    if (refreshTimeout !== undefined) clearTimeout(refreshTimeout);
+    refreshTimeout = setTimeout(() => {
+      refreshTimeout = undefined;
+      void provider.load().then(() => updateBadge(provider, treeView));
+    }, debounceMs);
+  };
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  for (const folder of folders) {
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(folder, "**/*"),
+    );
+    watcher.onDidChange(scheduleRefresh);
+    watcher.onDidCreate(scheduleRefresh);
+    watcher.onDidDelete(scheduleRefresh);
+    context.subscriptions.push(watcher);
+  }
+  context.subscriptions.push({
+    dispose: () => {
+      if (refreshTimeout !== undefined) clearTimeout(refreshTimeout);
+    },
+  });
+
   vscode.workspace.onDidChangeConfiguration((e) => {
     if (
       e.affectsConfiguration("whatChanged.pathFilter") ||
